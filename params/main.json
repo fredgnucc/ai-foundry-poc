@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "swedencentral" },
+    "resourceGroupName": { "value": "rg-ai-gateway" },
+    "namePrefix": { "value": "aigw" },
+    "projectName": { "value": "gateway-poc" },
+    "modelName": { "value": "gpt-6-astra" },
+    "modelVersion": { "value": "2026-09-03" },
+    "modelCapacity": { "value": 10 },
+    "inferenceApiVersion": { "value": "2024-10-21" },
+    "apimSku": { "value": "BasicV2" },
+    "publisherEmail": { "value": "you@example.com" },
+    "tokenLimitPerMinute": { "value": 0 },
+    "nameSeed": { "value": "v1" },
+    "tags": {
+      "value": {
+        "lab": "ai-gateway"
+      }
+    }
+  }
+}

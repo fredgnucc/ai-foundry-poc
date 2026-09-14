@@ -1,0 +1,26 @@
+<policies>
+  <inbound>
+    <base />
+    <set-backend-service id="apim-generated-policy" backend-id="__BACKEND__" />
+    <choose>
+      <when condition="@(context.Variables.ContainsKey(&quot;tokenlimit-&quot;+(string)context.Request.Foundry.Deployment))">
+        <llm-token-limit
+            counter-key="@((string)context.Request.Foundry.Deployment)"
+            tokens-per-minute="@(int.Parse((string)context.Variables[&quot;tokenlimit-&quot;+(string)context.Request.Foundry.Deployment]))"
+            estimate-prompt-tokens="false"
+            remaining-tokens-header-name="x-ratelimit-remaining-tokens"
+            tokens-consumed-header-name="x-ratelimit-consumed-tokens" />
+      </when>
+      <otherwise />
+    </choose>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

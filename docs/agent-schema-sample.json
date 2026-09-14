@@ -1,0 +1,163 @@
+[
+  {
+    "object": "agent",
+    "id": "example-agent",
+    "name": "example-agent",
+    "state": "enabled",
+    "versions": {
+      "latest": {
+        "metadata": {
+          "logo": "Avatar_Default.svg",
+          "description": "",
+          "modified_at": "1789340308",
+          "microsoft.voice-live.enabled": "false",
+          "microsoft.voice-live.configuration": "{\"session\":{\"voice\":{\"name\":\"en-US-Ava:DragonHDLatestNeural\",\"type\":\"azure-standard\",\"temperature\":0.8,\"rate\":\"1\",\"isHdVoice\":true},\"inputAudioTranscription\":{\"model\":\"azure-speech\",\"language\":\"auto-detect\"},\"turnDetection\":{\"type\":\"azure_semantic_vad\",\"endOfUtteranceDetection\":null,\"removeFillerWords\":true},\"inputAudioNoiseReduction\":null,\"inputAudioEchoCancellation\":null,\"fillerResponse\":null,\"avatar\":null,\"proactiveEngagement\":false}}"
+        },
+        "object": "agent.version",
+        "id": "example-agent:4",
+        "name": "example-agent",
+        "version": "4",
+        "description": "",
+        "created_at": 1789340308,
+        "definition": {
+          "kind": "prompt",
+          "model": "example-account/gpt-6-astra",
+          "instructions": "",
+          "tools": []
+        },
+        "draft": false,
+        "status": "active",
+        "instance_identity": {
+          "principal_id": "00000000-0000-0000-0000-000000000000",
+          "client_id": "00000000-0000-0000-0000-000000000000"
+        },
+        "blueprint": {
+          "principal_id": "00000000-0000-0000-0000-000000000000",
+          "client_id": "00000000-0000-0000-0000-000000000000"
+        },
+        "blueprint_reference": {
+          "type": "ManagedAgentIdentityBlueprint",
+          "blueprint_id": "example-agent-b405f"
+        },
+        "agent_guid": "00000000-0000-0000-0000-000000000000"
+      }
+    },
+    "agent_endpoint": {
+      "version_selector": {
+        "version_selection_rules": [
+          {
+            "type": "FixedRatio",
+            "agent_version": "@latest",
+            "traffic_percentage": 100
+          }
+        ]
+      },
+      "protocols": [
+        "responses"
+      ],
+      "protocol_configuration": {
+        "responses": {}
+      },
+      "authorization_schemes": [
+        {
+          "type": "Entra"
+        }
+      ],
+      "publish_approval_status": "not_published"
+    },
+    "instance_identity": {
+      "principal_id": "00000000-0000-0000-0000-000000000000",
+      "client_id": "00000000-0000-0000-0000-000000000000"
+    },
+    "blueprint": {
+      "principal_id": "00000000-0000-0000-0000-000000000000",
+      "client_id": "00000000-0000-0000-0000-000000000000"
+    },
+    "blueprint_reference": {
+      "type": "ManagedAgentIdentityBlueprint",
+      "blueprint_id": "example-agent-b405f"
+    },
+    "configuration_state": "enabled"
+  },
+  {
+    "object": "agent",
+    "id": "example-agent-2",
+    "name": "example-agent-2",
+    "state": "enabled",
+    "versions": {
+      "latest": {
+        "metadata": {
+          "logo": "Avatar_Default.svg"
+        },
+        "object": "agent.version",
+        "id": "example-agent-2:1",
+        "name": "example-agent-2",
+        "version": "1",
+        "description": "",
+        "created_at": 1789336060,
+        "definition": {
+          "kind": "prompt",
+          "model": "example-account/gpt-6-astra",
+          "instructions": "",
+          "tools": [
+            {
+              "type": "web_search"
+            }
+          ]
+        },
+        "draft": false,
+        "status": "active",
+        "instance_identity": {
+          "principal_id": "00000000-0000-0000-0000-000000000000",
+          "client_id": "00000000-0000-0000-0000-000000000000"
+        },
+        "blueprint": {
+          "principal_id": "00000000-0000-0000-0000-000000000000",
+          "client_id": "00000000-0000-0000-0000-000000000000"
+        },
+        "blueprint_reference": {
+          "type": "ManagedAgentIdentityBlueprint",
+          "blueprint_id": "example-agent-2-a4e8e"
+        },
+        "agent_guid": "00000000-0000-0000-0000-000000000000"
+      }
+    },
+    "agent_endpoint": {
+      "version_selector": {
+        "version_selection_rules": [
+          {
+            "type": "FixedRatio",
+            "agent_version": "@latest",
+            "traffic_percentage": 100
+          }
+        ]
+      },
+      "protocols": [
+        "responses"
+      ],
+      "protocol_configuration": {
+        "responses": {}
+      },
+      "authorization_schemes": [
+        {
+          "type": "Entra"
+        }
+      ],
+      "publish_approval_status": "not_published"
+    },
+    "instance_identity": {
+      "principal_id": "00000000-0000-0000-0000-000000000000",
+      "client_id": "00000000-0000-0000-0000-000000000000"
+    },
+    "blueprint": {
+      "principal_id": "00000000-0000-0000-0000-000000000000",
+      "client_id": "00000000-0000-0000-0000-000000000000"
+    },
+    "blueprint_reference": {
+      "type": "ManagedAgentIdentityBlueprint",
+      "blueprint_id": "example-agent-2-a4e8e"
+    },
+    "configuration_state": "enabled"
+  }
+]
+
