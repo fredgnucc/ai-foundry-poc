@@ -30,34 +30,6 @@ pip install -r requirements.txt
 python agent.py
 ```
 
-Then open <https://ai.azure.com>, select the project, and chat with the agent.
-
-## Verify the gateway routes traffic
-
-```powershell
-$out  = az deployment sub show -n ai-gateway --query properties.outputs -o json | ConvertFrom-Json
-$key  = az apim subscription show -g $out.resourceGroupName.value -n $out.apimName.value `
-          --sid "$($out.accountName.value)-$($out.projectName.value)-ai" --query primaryKey -o tsv
-
-Invoke-RestMethod -Method POST `
-  -Uri "$($out.gatewayEndpoint.value)/deployments/$($out.deploymentName.value)/chat/completions?api-version=2024-10-21" `
-  -Headers @{ 'api-key' = $key; 'Content-Type' = 'application/json' } `
-  -Body ([Text.Encoding]::UTF8.GetBytes((@{
-      messages = @(@{ role = 'user'; content = 'Reply with exactly: gateway routed ok' })
-      max_completion_tokens = 20
-  } | ConvertTo-Json -Depth 5)))
-```
-
-A `200` with `gateway routed ok` means the whole chain works.
-
-## Options
-
-| Parameter | Default | Notes |
-|---|---|---|
-| `apimSku` | `BasicV2` | Only v2 tiers support VNet integration |
-| `modelCapacity` | `10` | Thousands of tokens per minute |
-| `tokenLimitPerMinute` | `0` | `0` disables the token limit |
-
 ```powershell
 python agent.py --name my-agent          # through the gateway
 python agent.py --name my-agent --direct # bypass the gateway
