@@ -5,8 +5,9 @@ Without the diagnostic setting, the APIM Requests metric still counts traffic, b
 and the Azure Monitor-based Analytics dashboard (the only analytics in v2 tiers) stay
 empty, which looks exactly like the agent bypassing the gateway.
 
-GatewayLlmLogs is enabled alongside GatewayLogs because it carries the model and token
-detail that the token-limit policy acts on.
+GatewayLlmLogs is exported too, but ApiManagementGatewayLlmLog (model, tokens) only gets
+rows once LLM logging (largeLanguageModel) is enabled on APIM's azuremonitor diagnostic,
+which this template does not do.
 '''
 
 param location string

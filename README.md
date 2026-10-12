@@ -86,8 +86,11 @@ agent ──► ModelGateway ──► APIM ──► model
   Without it the APIM `Requests` metric still counts traffic, but Logs and the Analytics
   dashboard stay empty, which looks like the gateway is bypassed. Agent calls land in
   `ApiManagementGatewayLogs` with `ApimSubscriptionId` = `<account>-<project>-ai` (the
-  connection's key); model and token detail is in `ApiManagementGatewayLlmLog`. A new
-  workspace can take up to 2 hours to receive its first rows.
+  connection's key). A new workspace can take up to 2 hours to receive its first rows.
+- `ApiManagementGatewayLlmLog` (model, tokens) stays empty even though `GatewayLlmLogs`
+  is exported: LLM logging is off in APIM's `azuremonitor` diagnostic (`largeLanguageModel`;
+  portal: API → Settings → Azure Monitor → **Log LLM messages**), and this template
+  doesn't turn it on.
 
 ## Layout
 
