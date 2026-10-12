@@ -32,7 +32,7 @@ param publisherEmail string
 @description('Tokens per minute per deployment. 0 disables the limit.')
 param tokenLimitPerMinute int = 0
 
-@description('Retention for gateway logs in Log Analytics.')
+@description('Retention for gateway logs and agent traces in Log Analytics.')
 param logRetentionInDays int = 30
 
 @description('''
@@ -48,6 +48,7 @@ var suffix = uniqueString(subscription().id, resourceGroupName, namePrefix, name
 var accountName = toLower('${namePrefix}-${suffix}')
 var apimName = toLower('${namePrefix}-apim-${suffix}')
 var workspaceName = toLower('log-${namePrefix}-${suffix}')
+var appInsightsName = toLower('appi-${namePrefix}-${suffix}')
 var productName = toLower('${accountName}-${projectName}-ai')
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -109,8 +110,11 @@ module observability 'modules/observability.bicep' = {
     apimName: apimName
     diagnosticSettingName: 'diag-${namePrefix}-apim'
     retentionInDays: logRetentionInDays
+    appInsightsName: appInsightsName
+    accountName: accountName
+    projectName: projectName
   }
-  dependsOn: [ gateway ]
+  dependsOn: [ foundry, gateway ]
 }
 
 output accountName string = accountName
@@ -122,3 +126,4 @@ output resourceGroupName string = resourceGroupName
 output projectEndpoint string = 'https://${accountName}.services.ai.azure.com/api/projects/${projectName}'
 output gatewayEndpoint string = 'https://${apimName}.azure-api.net/${accountName}'
 output workspaceName string = observability.outputs.workspaceName
+output appInsightsName string = observability.outputs.appInsightsName

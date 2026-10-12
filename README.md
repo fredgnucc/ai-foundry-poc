@@ -91,6 +91,13 @@ agent ──► ModelGateway ──► APIM ──► model
   is exported: LLM logging is off in APIM's `azuremonitor` diagnostic (`largeLanguageModel`;
   portal: API → Settings → Azure Monitor → **Log LLM messages**), and this template
   doesn't turn it on.
+- Agent **traces** need an Application Insights connection on the project, also in
+  `modules/observability.bicep`. With it, Foundry traces prompt agents server-side with no
+  code change and fills the Traces, Insights and Monitor tabs. `AppDependencies` gets the
+  `invoke_agent` and `chat <connection>/<deployment>` spans (with token counts) and
+  `AppGenAIContent` gets the prompts and replies. Both land in the gateway's workspace, so
+  `docs/queries.kql` can join a trace to its gateway call. The project identity gets Log
+  Analytics Reader and Privileged Monitoring Data Reader on the component to read traces back.
 
 ## Layout
 
@@ -99,11 +106,12 @@ main.bicep               subscription-scope entry point
 modules/foundry.bicep    account, model deployment, project
 modules/gateway.bicep    API Management (isAIGateway)
 modules/association.bicep RBAC, backend, API, operations, policy, product, links, connection
-modules/observability.bicep Log Analytics workspace, APIM diagnostic setting (gateway logs)
+modules/observability.bicep Log Analytics workspace, APIM diagnostic setting, App Insights + tracing connections
 modules/policy.xml       APIM API policy
 params/main.json         parameters
 agent.py                 creates the agent (data plane, not ARM)
 docs/                    how the portal builds this, reverse-engineered from ARM
+docs/queries.kql         KQL: gateway traffic, prompts and replies, trace-to-gateway join
 ```
 
 ## Background

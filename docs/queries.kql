@@ -1,0 +1,69 @@
+// AI Gateway — Log Analytics queries
+//
+// Workspace : log-aigw-<suffix>  (rg-ai-gateway), deployed by modules/observability.bicep
+// Portal    : Log Analytics workspaces > log-aigw-<suffix> > Logs
+//
+// Gateway logs and agent traces share this workspace, so one query can join them.
+//
+// NOTE: the time-range picker in the portal overrides any ago() filter below.
+// If a query returns nothing, check the picker before assuming logging is broken.
+//
+// NOTE: the App* tables (AppDependencies, AppGenAIContent) only appear after the first
+// trace is ingested. Until then, a query that names them fails instead of returning nothing.
+
+
+// ---------------------------------------------------------------------------
+// 1. Gateway traffic — every model call the agent makes through APIM.
+//
+// ApimSubscriptionId is the connection's key, <account>-<project>-ai.
+// Only populated because the diagnostic setting uses logAnalyticsDestinationType
+// 'Dedicated'; otherwise rows land in the legacy AzureDiagnostics table.
+// ---------------------------------------------------------------------------
+ApiManagementGatewayLogs
+| where TimeGenerated > ago(24h)
+| where ApimSubscriptionId endswith "-ai"
+| project TimeGenerated, ApimSubscriptionId, Method, Url, ResponseCode, TotalTime, BackendTime, CallerIpAddress
+| order by TimeGenerated desc
+
+
+// ---------------------------------------------------------------------------
+// 2. What was typed — prompt and reply per agent run.
+//
+// Server-side tracing records the agent span and the model span with the same
+// content, so keep one row per trace.
+// ---------------------------------------------------------------------------
+AppGenAIContent
+| where TimeGenerated > ago(24h)
+| summarize arg_max(TimeGenerated, AgentName, ModelName, InputMessages, OutputMessages) by TraceId
+| extend Prompt = tostring(parse_json(InputMessages)[-1].parts[0].content),
+         Reply  = tostring(parse_json(OutputMessages)[0].parts[0].content)
+| project TimeGenerated, AgentName, ModelName, Prompt, Reply, TraceId
+| order by TimeGenerated desc
+
+
+// ---------------------------------------------------------------------------
+// 3. THE PROOF — agent trace joined to its gateway call.
+//
+// The model span is named "chat <connection>/<deployment>". The gateway request
+// starts inside that span, which is the join condition.
+//
+// Measured on this lab (2026-10-12 UTC):
+//   span  18:53:44  chat aigw-…/gpt-6-astra  40 in / 4 out tokens  1863 ms
+//   APIM  18:53:44  aigw-…-gateway-poc-ai    200                   1753 ms
+// ---------------------------------------------------------------------------
+let gateway = ApiManagementGatewayLogs
+    | where TimeGenerated > ago(24h)
+    | where Method == "POST" and ApimSubscriptionId endswith "-ai"
+    | project GatewayTime = TimeGenerated, ApimSubscriptionId, ResponseCode, GatewayMs = TotalTime;
+AppDependencies
+| where TimeGenerated > ago(24h)
+| where Name startswith "chat "
+| project SpanStart = TimeGenerated, SpanMs = DurationMs, TraceId = OperationId, Span = Name,
+          Agent = tostring(Properties["gen_ai.agent.name"]),
+          InTokens = toint(Properties["gen_ai.usage.input_tokens"]),
+          OutTokens = toint(Properties["gen_ai.usage.output_tokens"])
+| extend k = 1
+| join kind=inner (gateway | extend k = 1) on k
+| where GatewayTime between (SpanStart .. (SpanStart + SpanMs * 1ms))
+| project SpanStart, Agent, Span, InTokens, OutTokens, SpanMs, GatewayTime, ApimSubscriptionId, ResponseCode, GatewayMs, TraceId
+| order by SpanStart desc
