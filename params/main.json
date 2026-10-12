@@ -13,6 +13,7 @@
     "apimSku": { "value": "BasicV2" },
     "publisherEmail": { "value": "you@example.com" },
     "tokenLimitPerMinute": { "value": 0 },
+    "logRetentionInDays": { "value": 30 },
     "nameSeed": { "value": "v1" },
     "tags": {
       "value": {

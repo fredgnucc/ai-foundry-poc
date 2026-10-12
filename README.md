@@ -82,6 +82,12 @@ agent ──► ModelGateway ──► APIM ──► model
   **API** policy holds the enforcement engine. Neither works alone.
 - `Microsoft.Resources/links` are presentation only — they make the gateway appear in the
   portal's AI Gateway list but play no part in routing.
+- Per-request evidence needs the **diagnostic setting** in `modules/observability.bicep`.
+  Without it the APIM `Requests` metric still counts traffic, but Logs and the Analytics
+  dashboard stay empty, which looks like the gateway is bypassed. Agent calls land in
+  `ApiManagementGatewayLogs` with `ApimSubscriptionId` = `<account>-<project>-ai` (the
+  connection's key); model and token detail is in `ApiManagementGatewayLlmLog`. A new
+  workspace can take up to 2 hours to receive its first rows.
 
 ## Layout
 
@@ -90,6 +96,7 @@ main.bicep               subscription-scope entry point
 modules/foundry.bicep    account, model deployment, project
 modules/gateway.bicep    API Management (isAIGateway)
 modules/association.bicep RBAC, backend, API, operations, policy, product, links, connection
+modules/observability.bicep Log Analytics workspace, APIM diagnostic setting (gateway logs)
 modules/policy.xml       APIM API policy
 params/main.json         parameters
 agent.py                 creates the agent (data plane, not ARM)

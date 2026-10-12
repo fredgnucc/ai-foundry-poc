@@ -32,6 +32,9 @@ param publisherEmail string
 @description('Tokens per minute per deployment. 0 disables the limit.')
 param tokenLimitPerMinute int = 0
 
+@description('Retention for gateway logs in Log Analytics.')
+param logRetentionInDays int = 30
+
 @description('''
 Changes every generated resource name. Foundry accounts and API Management soft-delete,
 so a redeploy after teardown collides with the reserved name ("FlagMustBeSetForRestore").
@@ -44,6 +47,7 @@ param tags object = { lab: 'ai-gateway' }
 var suffix = uniqueString(subscription().id, resourceGroupName, namePrefix, nameSeed)
 var accountName = toLower('${namePrefix}-${suffix}')
 var apimName = toLower('${namePrefix}-apim-${suffix}')
+var workspaceName = toLower('log-${namePrefix}-${suffix}')
 var productName = toLower('${accountName}-${projectName}-ai')
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -95,6 +99,20 @@ module association 'modules/association.bicep' = {
   dependsOn: [ foundry, gateway ]
 }
 
+module observability 'modules/observability.bicep' = {
+  scope: rg
+  name: 'observability'
+  params: {
+    location: location
+    tags: tags
+    workspaceName: workspaceName
+    apimName: apimName
+    diagnosticSettingName: 'diag-${namePrefix}-apim'
+    retentionInDays: logRetentionInDays
+  }
+  dependsOn: [ gateway ]
+}
+
 output accountName string = accountName
 output projectName string = projectName
 output apimName string = apimName
@@ -103,3 +121,4 @@ output deploymentName string = modelName
 output resourceGroupName string = resourceGroupName
 output projectEndpoint string = 'https://${accountName}.services.ai.azure.com/api/projects/${projectName}'
 output gatewayEndpoint string = 'https://${apimName}.azure-api.net/${accountName}'
+output workspaceName string = observability.outputs.workspaceName
