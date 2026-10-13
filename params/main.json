@@ -15,6 +15,12 @@
     "tokenLimitPerMinute": { "value": 0 },
     "logRetentionInDays": { "value": 30 },
     "logLlmMessages": { "value": true },
+    "deployKnowledge": { "value": true },
+    "searchSku": { "value": "basic" },
+    "searchLocation": { "value": "switzerlandnorth" },
+    "embeddingModelName": { "value": "text-embedding-3-small" },
+    "embeddingModelVersion": { "value": "1" },
+    "embeddingCapacity": { "value": 50 },
     "nameSeed": { "value": "v1" },
     "tags": {
       "value": {

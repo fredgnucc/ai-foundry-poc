@@ -38,6 +38,21 @@ param logRetentionInDays int = 30
 @description('APIM logs prompts and completions to ApiManagementGatewayLlmLog, not just token counts.')
 param logLlmMessages bool = true
 
+@description('Foundry IQ plumbing: embedding model, search service and roles. knowledge.py pushes the repo into an index; the knowledge base itself is built in the portal (README).')
+param deployKnowledge bool = true
+
+@description('Free has no managed identity for outbound calls, so it can\'t reach the keyless model.')
+@allowed([ 'basic', 'standard' ])
+param searchSku string = 'basic'
+
+@description('Only Search moves: Sweden Central creates no new search services (high demand). Pick a region with agentic retrieval and the semantic ranker.')
+param searchLocation string = 'switzerlandnorth'
+
+@description('Embedding model that vectorizes the chunks and the questions.')
+param embeddingModelName string = 'text-embedding-3-small'
+param embeddingModelVersion string = '1'
+param embeddingCapacity int = 50
+
 @description('''
 Changes every generated resource name. Foundry accounts and API Management soft-delete,
 so a redeploy after teardown collides with the reserved name ("FlagMustBeSetForRestore").
@@ -53,6 +68,7 @@ var apimName = toLower('${namePrefix}-apim-${suffix}')
 var workspaceName = toLower('log-${namePrefix}-${suffix}')
 var appInsightsName = toLower('appi-${namePrefix}-${suffix}')
 var productName = toLower('${accountName}-${projectName}-ai')
+var searchName = toLower('srch-${namePrefix}-${suffix}')
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
@@ -122,6 +138,26 @@ module observability 'modules/observability.bicep' = {
   dependsOn: [ foundry, gateway, association ]
 }
 
+module knowledge 'modules/knowledge.bicep' = if (deployKnowledge) {
+  scope: rg
+  name: 'knowledge'
+  params: {
+    location: location
+    tags: tags
+    accountName: accountName
+    projectName: projectName
+    searchName: searchName
+    searchSku: searchSku
+    searchLocation: searchLocation
+    embeddingModelName: embeddingModelName
+    embeddingModelVersion: embeddingModelVersion
+    embeddingCapacity: embeddingCapacity
+    userPrincipalId: deployer().objectId
+  }
+  // Last, so its model deployment doesn't overlap the other modules' changes to the account.
+  dependsOn: [ foundry, observability ]
+}
+
 output accountName string = accountName
 output projectName string = projectName
 output apimName string = apimName
@@ -132,3 +168,4 @@ output projectEndpoint string = 'https://${accountName}.services.ai.azure.com/ap
 output gatewayEndpoint string = 'https://${apimName}.azure-api.net/${accountName}'
 output workspaceName string = observability.outputs.workspaceName
 output appInsightsName string = observability.outputs.appInsightsName
+output searchName string = knowledge.?outputs.searchName ?? ''
