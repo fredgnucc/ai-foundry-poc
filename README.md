@@ -87,10 +87,14 @@ agent ──► ModelGateway ──► APIM ──► model
   dashboard stay empty, which looks like the gateway is bypassed. Agent calls land in
   `ApiManagementGatewayLogs` with `ApimSubscriptionId` = `<account>-<project>-ai` (the
   connection's key). A new workspace can take up to 2 hours to receive its first rows.
-- `ApiManagementGatewayLlmLog` (model, tokens) stays empty even though `GatewayLlmLogs`
-  is exported: LLM logging is off in APIM's `azuremonitor` diagnostic (`largeLanguageModel`;
-  portal: API → Settings → Azure Monitor → **Log LLM messages**), and this template
-  doesn't turn it on.
+- APIM's own record of each model call — model, tokens, prompt and completion — lands in
+  `ApiManagementGatewayLlmLog`. It takes two switches, both in `modules/observability.bicep`:
+  the diagnostic setting exports `GatewayLlmLogs`, and an API-level `azuremonitor`
+  diagnostic turns on LLM logging (`largeLanguageModel`; portal: API → Settings → Azure
+  Monitor → **Log LLM messages**). Export alone leaves the table empty. Rows arrive 2–5
+  minutes after the call, and large messages are split into chunks that query 4 in
+  `docs/queries.kql` rejoins. The text is kept in clear for the workspace retention;
+  `logLlmMessages=false` keeps model and tokens only.
 - Agent **traces** need an Application Insights connection on the project, also in
   `modules/observability.bicep`. With it, Foundry traces prompt agents server-side with no
   code change and fills the Traces, Insights and Monitor tabs. `AppDependencies` gets the
@@ -106,12 +110,12 @@ main.bicep               subscription-scope entry point
 modules/foundry.bicep    account, model deployment, project
 modules/gateway.bicep    API Management (isAIGateway)
 modules/association.bicep RBAC, backend, API, operations, policy, product, links, connection
-modules/observability.bicep Log Analytics workspace, APIM diagnostic setting, App Insights + tracing connections
+modules/observability.bicep Log Analytics workspace, APIM diagnostic setting + LLM logging, App Insights + tracing connections
 modules/policy.xml       APIM API policy
 params/main.json         parameters
 agent.py                 creates the agent (data plane, not ARM)
 docs/                    how the portal builds this, reverse-engineered from ARM
-docs/queries.kql         KQL: gateway traffic, prompts and replies, trace-to-gateway join
+docs/queries.kql         KQL: gateway traffic, prompts and replies (Foundry and APIM), trace-to-gateway join
 ```
 
 ## Background

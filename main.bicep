@@ -35,6 +35,9 @@ param tokenLimitPerMinute int = 0
 @description('Retention for gateway logs and agent traces in Log Analytics.')
 param logRetentionInDays int = 30
 
+@description('APIM logs prompts and completions to ApiManagementGatewayLlmLog, not just token counts.')
+param logLlmMessages bool = true
+
 @description('''
 Changes every generated resource name. Foundry accounts and API Management soft-delete,
 so a redeploy after teardown collides with the reserved name ("FlagMustBeSetForRestore").
@@ -113,8 +116,10 @@ module observability 'modules/observability.bicep' = {
     appInsightsName: appInsightsName
     accountName: accountName
     projectName: projectName
+    logLlmMessages: logLlmMessages
   }
-  dependsOn: [ foundry, gateway ]
+  // association creates the API that the LLM logging diagnostic attaches to.
+  dependsOn: [ foundry, gateway, association ]
 }
 
 output accountName string = accountName

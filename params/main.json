@@ -14,6 +14,7 @@
     "publisherEmail": { "value": "you@example.com" },
     "tokenLimitPerMinute": { "value": 0 },
     "logRetentionInDays": { "value": 30 },
+    "logLlmMessages": { "value": true },
     "nameSeed": { "value": "v1" },
     "tags": {
       "value": {

@@ -10,6 +10,9 @@
 //
 // NOTE: the App* tables (AppDependencies, AppGenAIContent) only appear after the first
 // trace is ingested. Until then, a query that names them fails instead of returning nothing.
+//
+// NOTE: queries 1 and 4 only use APIM tables, so they also run in the APIM instance's
+// Monitoring > Logs. Queries 2 and 3 need the workspace.
 
 
 // ---------------------------------------------------------------------------
@@ -67,3 +70,41 @@ AppDependencies
 | where GatewayTime between (SpanStart .. (SpanStart + SpanMs * 1ms))
 | project SpanStart, Agent, Span, InTokens, OutTokens, SpanMs, GatewayTime, ApimSubscriptionId, ResponseCode, GatewayMs, TraceId
 | order by SpanStart desc
+
+
+// ---------------------------------------------------------------------------
+// 4. What the gateway saw — prompt and reply per model call, from APIM's own logs.
+//
+// Needs LLM logging on the API (largeLanguageModel, modules/observability.bicep).
+// Rows arrive 2-5 minutes after the call. Also runs in APIM > Monitoring > Logs.
+//
+// One CorrelationId per model call: sequence 0 holds model and tokens, the next rows
+// the request and response. Large messages arrive as raw string chunks that only parse
+// once rejoined in SequenceNumber order.
+// The request is everything the model received: a developer message (a platform
+// preamble, then the agent instructions) and the whole conversation. Typed is the last
+// user message. Foundry's traces don't show the preamble, and PromptTokens here ran a
+// constant 116 above query 3's InTokens on every call measured.
+//
+// Measured on this lab (2026-10-13 UTC):
+//   09:02:15  160 in / 23 out  Typed "APIM LLM log test: name three fjords in Norway…"
+//   09:12:18  a 40,083-character prompt, logged as 3 chunks, rejoined intact
+// ---------------------------------------------------------------------------
+let text = (c: dynamic) { iff(gettype(c) == "string", tostring(c), tostring(c[0].text)) };
+ApiManagementGatewayLlmLog
+| where TimeGenerated > ago(24h)
+| summarize TimeGenerated = min(TimeGenerated),
+            Model = take_anyif(ModelName, isnotempty(ModelName)),
+            PromptTokens = max(PromptTokens), CompletionTokens = max(CompletionTokens),
+            Seq = make_list(SequenceNumber),
+            Req = make_list(tostring(RequestMessages)),
+            Res = make_list(tostring(ResponseMessages))
+            by CorrelationId
+| extend (Seq, Req, Res) = array_sort_asc(Seq, Req, Res)
+| extend Request = parse_json(strcat_array(Req, "")), Response = parse_json(strcat_array(Res, ""))
+| mv-apply with_itemindex = i m = Request on (
+    where tostring(m.role) == "user"
+    | summarize arg_max(i, m)
+    | project Typed = text(m.content))
+| project TimeGenerated, Model, PromptTokens, CompletionTokens, Typed, Reply = text(Response.content), CorrelationId
+| order by TimeGenerated desc
