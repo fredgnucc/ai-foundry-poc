@@ -58,9 +58,13 @@ After `python knowledge.py`, open [Foundry (new)](https://ai.azure.com), project
 1. **Knowledge**: connect the search service (output `searchName`) with **Microsoft
    Entra ID** authentication. The service accepts no keys.
 2. Create a knowledge base with one knowledge source of type **Azure AI Search index**,
-   index `repo-docs`. Set retrieval reasoning effort to **minimal** and output to
-   **extractive**: `gpt-6-astra` isn't one of the models a knowledge base can use for
-   query planning.
+   index `repo-docs`. Leave **Chat completions model** empty, and set retrieval reasoning
+   effort to **minimal** and output mode to **extractive data**. The knowledge base then
+   needs no LLM: the agent's model, through APIM, writes both the search query and the
+   answer. Low or medium effort and answer synthesis need one of the
+   [supported models](https://learn.microsoft.com/en-us/azure/search/agentic-retrieval-how-to-create-knowledge-base#supported-models)
+   (not `gpt-6-astra`), and the portal points Search straight at the Foundry account,
+   outside APIM.
 3. **Agents** → `gateway-agent`: add the knowledge base, with instructions such as
    *Use the knowledge base tool to answer user questions. If the knowledge base doesn't
    contain the answer, respond with "I don't know". When you use information from the
