@@ -79,32 +79,25 @@ AppDependencies
 // Rows arrive 2-5 minutes after the call. Also runs in APIM > Monitoring > Logs.
 //
 // One CorrelationId per model call: sequence 0 holds model and tokens, the next rows
-// the request and response. Large messages arrive as raw string chunks that only parse
-// once rejoined in SequenceNumber order.
+// the request and response. Large messages arrive as raw string chunks. make_list keeps
+// the order of sorted input, so sorting by SequenceNumber lets strcat_array rejoin them.
 // The request is everything the model received: a developer message (a platform
-// preamble, then the agent instructions) and the whole conversation. Typed is the last
-// user message. Foundry's traces don't show the preamble, and PromptTokens here ran a
-// constant 116 above query 3's InTokens on every call measured.
+// preamble, then the agent instructions) and the whole conversation. Typed is its last
+// message: the user's while the agent has no tools (agent.py), possibly a tool result
+// once it has some. Foundry's traces don't show the preamble, and APIM's PromptTokens
+// ran a constant 116 above query 3's InTokens on every call measured.
 //
 // Measured on this lab (2026-10-13 UTC):
-//   09:02:15  160 in / 23 out  Typed "APIM LLM log test: name three fjords in Norway…"
+//   09:02:15  183 tokens  Typed "APIM LLM log test: name three fjords in Norway…"
 //   09:12:18  a 40,083-character prompt, logged as 3 chunks, rejoined intact
 // ---------------------------------------------------------------------------
-let text = (c: dynamic) { iff(gettype(c) == "string", tostring(c), tostring(c[0].text)) };
 ApiManagementGatewayLlmLog
 | where TimeGenerated > ago(24h)
-| summarize TimeGenerated = min(TimeGenerated),
-            Model = take_anyif(ModelName, isnotempty(ModelName)),
-            PromptTokens = max(PromptTokens), CompletionTokens = max(CompletionTokens),
-            Seq = make_list(SequenceNumber),
-            Req = make_list(tostring(RequestMessages)),
-            Res = make_list(tostring(ResponseMessages))
+| sort by SequenceNumber asc
+| summarize TimeGenerated = min(TimeGenerated), Tokens = max(TotalTokens),
+            Request = strcat_array(make_list(tostring(RequestMessages)), ""),
+            Response = strcat_array(make_list(tostring(ResponseMessages)), "")
             by CorrelationId
-| extend (Seq, Req, Res) = array_sort_asc(Seq, Req, Res)
-| extend Request = parse_json(strcat_array(Req, "")), Response = parse_json(strcat_array(Res, ""))
-| mv-apply with_itemindex = i m = Request on (
-    where tostring(m.role) == "user"
-    | summarize arg_max(i, m)
-    | project Typed = text(m.content))
-| project TimeGenerated, Model, PromptTokens, CompletionTokens, Typed, Reply = text(Response.content), CorrelationId
+| project TimeGenerated, Tokens, Typed = tostring(parse_json(Request)[-1].content[0].text),
+          Reply = tostring(parse_json(Response).content)
 | order by TimeGenerated desc
