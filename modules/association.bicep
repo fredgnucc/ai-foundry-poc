@@ -204,3 +204,4 @@ resource linkProjectToProduct 'Microsoft.Resources/links@2016-09-01' = {
 
 output backendUrl string = backend.properties.url
 output productId string = product.id
+output deploymentName string = modelName

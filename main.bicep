@@ -14,10 +14,10 @@ param namePrefix string = 'aigw'
 @description('Foundry project name.')
 param projectName string = 'gateway-poc'
 
-@description('Model to deploy. The deployment is named after the model.')
-param modelName string = 'gpt-6-astra'
-param modelVersion string = '2026-09-03'
-param modelCapacity int = 10
+@description('Model the agent calls through the gateway; the deployment is named after it. The gateway only speaks chat completions, so the model must accept tool calls there, or the knowledge base tool fails (gpt-6-astra takes tools only on the Responses API).')
+param modelName string = 'gpt-5.6-sol'
+param modelVersion string = '2026-07-09'
+param modelCapacity int = 500
 
 @description('Inference API version pinned into the connection metadata.')
 param inferenceApiVersion string = '2024-10-21'

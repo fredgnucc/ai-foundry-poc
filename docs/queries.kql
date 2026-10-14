@@ -83,13 +83,17 @@ AppDependencies
 // the order of sorted input, so sorting by SequenceNumber lets strcat_array rejoin them.
 // The request is everything the model received: a developer message (a platform
 // preamble, then the agent instructions) and the whole conversation. Typed is its last
-// message: the user's while the agent has no tools (agent.py), possibly a tool result
-// once it has some. Foundry's traces don't show the preamble, and APIM's PromptTokens
-// ran a constant 116 above query 3's InTokens on every call measured.
+// user message. A question that uses a tool takes two calls: the first replies with a
+// tool call, shown as "(tool call)", and the second gets the tool result and answers.
+// Foundry's traces don't show the preamble: APIM's PromptTokens ran a constant 116 above
+// query 3's InTokens on every call measured, 123 once the knowledge base was attached.
 //
 // Measured on this lab (2026-10-13 UTC):
 //   09:02:15  183 tokens  Typed "APIM LLM log test: name three fjords in Norway…"
 //   09:12:18  a 40,083-character prompt, logged as 3 chunks, rejoined intact
+// With the knowledge base attached (2026-10-14 UTC):
+//   11:01:20   2,186 tokens  Typed "what is inside of the knowledge.py?"  Reply "(tool call)"
+//   11:01:26  13,226 tokens  same Typed, the 18 retrieved chunks in the request, then the answer
 // ---------------------------------------------------------------------------
 ApiManagementGatewayLlmLog
 | where TimeGenerated > ago(24h)
@@ -98,6 +102,9 @@ ApiManagementGatewayLlmLog
             Request = strcat_array(make_list(tostring(RequestMessages)), ""),
             Response = strcat_array(make_list(tostring(ResponseMessages)), "")
             by CorrelationId
-| project TimeGenerated, Tokens, Typed = tostring(parse_json(Request)[-1].content[0].text),
-          Reply = tostring(parse_json(Response).content)
+| mv-apply with_itemindex = i m = parse_json(Request) on (
+    where tostring(m.role) == "user" | top 1 by i desc
+    | project Typed = coalesce(tostring(m.content[0].text), tostring(m.content)))
+| extend Reply = tostring(parse_json(Response).content)
+| project TimeGenerated, Tokens, Typed, Reply = iff(isempty(Reply), "(tool call)", Reply)
 | order by TimeGenerated desc

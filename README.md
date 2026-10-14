@@ -27,7 +27,7 @@ az deployment sub create `
   --template-file main.bicep `
   --parameters params/main.json
 
-# 3. create the agent
+# 3. create the agent, or add a version to it
 pip install -r requirements.txt
 python agent.py
 
@@ -63,8 +63,11 @@ After `python knowledge.py`, open [Foundry (new)](https://ai.azure.com), project
    needs no LLM: the agent's model, through APIM, writes both the search query and the
    answer. Low or medium effort and answer synthesis need one of the
    [supported models](https://learn.microsoft.com/en-us/azure/search/agentic-retrieval-how-to-create-knowledge-base#supported-models)
-   (not `gpt-6-astra`), and the portal points Search straight at the Foundry account,
-   outside APIM.
+   (`gpt-5.6-sol` is one), and the portal points Search straight at the Foundry account,
+   outside APIM. Give the knowledge base a description, such as *Code and docs of an
+   Azure AI Foundry lab: Bicep, the APIM AI gateway, Foundry IQ, KQL queries*: the
+   retrieve tool tells the model to scope its searches with it. Without one, the model
+   searched this repo for *company organization handbook*.
 3. **Agents** → `gateway-agent`: add the knowledge base, with instructions such as
    *Use the knowledge base tool to answer user questions. If the knowledge base doesn't
    contain the answer, respond with "I don't know". When you use information from the
@@ -82,8 +85,10 @@ Why it looks like this:
 - **Basic tier.** The account accepts no keys, so Search calls the embedding model with
   its managed identity, which the Free tier doesn't have. The semantic ranker runs on its
   free plan, about 1,000 queries a month.
-- `python agent.py` creates an agent version with no tools: add the knowledge base again
-  afterwards.
+- **`gpt-5.6-sol`, not `gpt-6-astra`.** The gateway speaks chat completions only, and
+  `gpt-6-astra` rejects tools there (HTTP 400), so the knowledge base tool can't work.
+- Each agent version is a full snapshot, and Teams serves the latest. `python agent.py`
+  adds a version with no tools, so add the knowledge base again afterwards.
 - A `403` from `knowledge.py` right after a deployment is usually role propagation; retry
   after a few minutes.
 - `deployKnowledge=false` skips all of it. Search bills by the hour, even when idle.
@@ -161,7 +166,9 @@ agent ──► ModelGateway ──► APIM ──► model
   base for the agent (Search Index Data Reader). The deployer embeds and pushes the chunks
   (Cognitive Services OpenAI User, Search Index Data Contributor): Owner and Contributor
   define indexes and knowledge bases, but can't read or write documents. Embedding calls
-  go straight to the account; only the agent's chat model goes through APIM.
+  go straight to the account; only the agent's chat model goes through APIM. A question
+  that searches costs two chat calls: one writes the search queries (Search embeds each),
+  the next reads the retrieved chunks (13,137 prompt tokens for 18 chunks, measured).
 
 ## Layout
 
