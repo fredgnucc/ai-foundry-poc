@@ -11,7 +11,7 @@
 // NOTE: the App* tables (AppDependencies, AppGenAIContent) only appear after the first
 // trace is ingested. Until then, a query that names them fails instead of returning nothing.
 //
-// NOTE: queries 1 and 4 only use APIM tables, so they also run in the APIM instance's
+// NOTE: queries 1, 4 and 5 only use APIM tables, so they also run in the APIM instance's
 // Monitoring > Logs. Queries 2 and 3 need the workspace.
 
 
@@ -107,4 +107,48 @@ ApiManagementGatewayLlmLog
     | project Typed = coalesce(tostring(m.content[0].text), tostring(m.content)))
 | extend Reply = tostring(parse_json(Response).content)
 | project TimeGenerated, Tokens, Typed, Reply = iff(isempty(Reply), "(tool call)", Reply)
+| order by TimeGenerated desc
+
+
+// ---------------------------------------------------------------------------
+// 5. Knowledge base searches — the two gateway calls around each search.
+//
+// The search itself never crosses APIM: Foundry calls the knowledge base, and Search
+// calls the embedding model directly. APIM sees the model call before and after it:
+//   call 1  the model asks for a search. APIM logs that reply as {"role":"assistant"},
+//           without the tool call, so the words searched for are only in the traces
+//           (AppDependencies span "execute_tool …", property gen_ai.tool.call.arguments).
+//   call 2  the request ends with the search result, the retrieved chunks, and the
+//           model answers from them. The wait between the two calls is the search.
+// Roles lists the request's messages in order: D developer (platform preamble and agent
+// instructions; a second D, "Today Date", comes with a tool result), U user,
+// A assistant (here the tool call), T tool (the search result). Earlier turns stay in the
+// request, with their own tool calls and results.
+// Calls that answer straight away are filtered out. Any tool call shows, and
+// gateway-agent's only tool is the knowledge base.
+//
+// Measured on this lab (2026-10-14 UTC), "How do I enable LLM logs in APIM?":
+//   11:51:17     564 prompt tokens  D U        (tool call)
+//   11:51:21  12,539 prompt tokens  D U D A T  20 chunks, 40,258 characters, then the answer
+// Over 8 searches, call 2 started 2.8 to 5.6 s after call 1 ended (ApiManagementGatewayLogs).
+// ---------------------------------------------------------------------------
+ApiManagementGatewayLlmLog
+| where TimeGenerated > ago(24h)
+| sort by SequenceNumber asc
+| summarize TimeGenerated = min(TimeGenerated), PromptTokens = max(PromptTokens),
+            Request = strcat_array(make_list(tostring(RequestMessages)), ""),
+            Response = strcat_array(make_list(tostring(ResponseMessages)), "")
+            by CorrelationId
+| extend Reply = tostring(parse_json(Response).content), LastMessage = parse_json(Request)[-1]
+| extend SearchResult = iff(tostring(LastMessage.role) == "tool", tostring(LastMessage.content), "")
+| where isempty(Reply) or isnotempty(SearchResult)
+| mv-apply with_itemindex = i m = parse_json(Request) on (
+    sort by i asc
+    | summarize Roles = strcat_array(make_list(toupper(substring(tostring(m.role), 0, 1))), " "))
+| mv-apply with_itemindex = i m = parse_json(Request) on (
+    where tostring(m.role) == "user" | top 1 by i desc
+    | project Typed = coalesce(tostring(m.content[0].text), tostring(m.content)))
+| project TimeGenerated, PromptTokens, Roles, Typed,
+          Chunks = toint(extract(@"Retrieved (\d+) documents", 1, SearchResult)),
+          Reply = iff(isempty(Reply), "(tool call)", Reply), SearchResult
 | order by TimeGenerated desc

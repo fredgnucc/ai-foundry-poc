@@ -169,6 +169,7 @@ agent ──► ModelGateway ──► APIM ──► model
   go straight to the account; only the agent's chat model goes through APIM. A question
   that searches costs two chat calls: one writes the search queries (Search embeds each),
   the next reads the retrieved chunks (13,137 prompt tokens for 18 chunks, measured).
+  Query 5 in `docs/queries.kql` shows that pair as APIM logged it.
 
 ## Layout
 
@@ -184,7 +185,7 @@ params/main.json         parameters
 agent.py                 creates the agent (data plane, not ARM)
 knowledge.py             pushes the repo into the search index (data plane, not ARM)
 docs/                    how the portal builds this, reverse-engineered from ARM
-docs/queries.kql         KQL: gateway traffic, prompts and replies (Foundry and APIM), trace-to-gateway join
+docs/queries.kql         KQL: gateway traffic, prompts and replies (Foundry and APIM), trace-to-gateway join, knowledge base searches
 ```
 
 ## Background
